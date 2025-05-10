@@ -1,0 +1,86 @@
+<div class="bg-white p-6 rounded-lg shadow-md">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-2xl font-semibold text-blue-900">📋 Listado de Países</h2>
+    <a href="/api/formulario/crear" class="bg-rosaFuerte   hover:bg-fucsia text-white font-semibold py-2 px-4 rounded">
+      + Agregar nuevo país
+    </a>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full table-auto border border-gray-300 rounded">
+      <thead class="bg-amarillo/50  text-blue-900 text-sm">
+        <tr >
+          <th class="px-4 py-2">Id</th>
+          <th class="px-4 py-2">Nombre Oficial (ES)</th>
+          <th class="px-4 py-2">Capital</th>
+          <th class="px-4 py-2">Fronteras</th>
+          <th class="px-4 py-2">Área</th>
+          <th class="px-4 py-2">Población</th>
+          <th class="px-4 py-2">Gini</th>
+          <th class="px-4 py-2">Zonas Horarias</th>
+          <th class="px-4 py-2">Creador</th>
+          <th class="px-4 py-2">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="text-gray-700 text-sm divide-y divide-gray-200">
+        <% paises.forEach(pais => { %>
+          <tr class="hover:bg-celeste/15">
+            <td class="px-4 py-2"><%= pais.id %></td>
+            <td class="px-4 py-2">
+              <% const nativeNames = pais.name.nativeName instanceof Map ? Object.fromEntries(pais.name.nativeName) : pais.name.nativeName; %>
+              <%= nativeNames?.spa?.official || 'No disponible' %>
+            </td>
+            <td class="px-4 py-2"><%= pais.capital?.join(', ') || '-' %></td>
+            <td class="px-4 py-2"><%= pais.borders?.join(', ') || '-' %></td>
+            <td class="px-4 py-2"><%= pais.area !== undefined ? pais.area.toLocaleString() + ' km²' : '-' %></td>
+            <td class="px-4 py-2"><%= pais.population !== undefined ? pais.population.toLocaleString() : '-' %></td>
+            <td class="px-4 py-2"><%= JSON.stringify(pais.gini) || '-' %></td>
+            <td class="px-4 py-2"><%= pais.timezones?.join(', ') || '-' %></td>
+            <td class="px-4 py-2"><%= pais.creador || '-' %></td>
+            <td class="px-4 py-2">
+              <% const nombreSeguro = nativeNames?.spa?.official || 'este país'; %>
+              <select onchange="accionPais(this, '<%= pais._id %>', '<%= nombreSeguro %>')" class="border rounded px-2 py-1 w-full">
+                <option disabled selected>Seleccionar</option>
+                <option value="actualizar">Actualizar</option>
+                <option value="eliminar">Eliminar</option>
+              </select>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+      <tfoot class="bg-amarillo text-blue-900 font-semibold text-sm">
+        <tr>
+          <td colspan="10" class="px-4 py-3">
+            <ul class="list-disc pl-6 space-y-1">
+              <li>Población total: <strong><%= totalPoblacion?.toLocaleString?.() || '-' %></strong></li>
+              <li>Área total: <strong><%= totalArea?.toLocaleString?.() || '-' %> km²</strong></li>
+              <li>Gini promedio: <strong><%= promedioGini || '-' %></strong></li>
+            </ul>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<a href="#top" class="fixed bottom-6 right-6 bg-amarillo hover:bg-rosaFuerte text-white text-lg p-3 rounded-full shadow-lg z-50" title="Volver arriba">↑</a>
+
+<script>
+  function accionPais(select, id, nombre) {
+    const opcion = select.value;
+    if (opcion === "actualizar") {
+      window.location.href = `/api/formulario/actualizarpais/${id}`;
+    } else if (opcion === "eliminar") {
+      const confirmar = confirm(`¿Estás seguro de que querés eliminar el país "${nombre}"?`);
+      if (confirmar) {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = `/api/pais/eliminar/${id}?_method=DELETE`;
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        select.value = "Seleccionar";
+      }
+    }
+  }
+</script>

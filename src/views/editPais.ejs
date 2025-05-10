@@ -1,0 +1,87 @@
+
+
+    <% if (errores && errores.length > 0) { %>
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <ul class="list-disc pl-5">
+          <% errores.forEach(error => { %>
+            <li><%= error %></li>
+          <% }) %>
+        </ul>
+      </div>
+    <% } %>
+
+
+      <div class="max-w-4xl mx-auto py-8 px-4">
+        <h1 class="text-2xl font-bold text-center text-fucsia mb-6">Editar País</h1>
+      <form action="/api/pais/actualizar/<%= pais._id %>?_method=PUT" method="POST" class="space-y-4 bg-white p-6 rounded shadow">
+
+
+     
+
+      <div>
+        <label class="block font-semibold mb-1">*Nombre Oficial en Español (nativeName.spa.official):</label>
+        <input type="text" name="nativeNameOfficial" id="nativeNameOfficial"
+               value="<%= pais.name?.nativeName?.get('spa')?.official || '' %>"
+               class="w-full border rounded px-3 py-2 campo-requerido" required />
+        <p id="nativeNameOfficial-error" class="text-red-600 text-sm mt-1 hidden">❌ Este campo no puede estar vacío y debe tener al menos 3 letras.</p>
+      </div>
+
+     
+
+    
+
+      <div>
+        <label class="block font-semibold mb-1">*Capital (coma separadas):</label>
+        <input type="text" name="capital" id="capital" value="<%= pais.capital?.join(', ') || '' %>" class="w-full border rounded px-3 py-2 campo-requerido" required />
+        <p id="capital-error" class="text-red-600 text-sm mt-1 hidden">❌ Cada capital debe tener entre 3 y 90 caracteres.</p>
+      </div>
+
+      <div>
+        <label class="block font-semibold mb-1">*Fronteras (coma separadas):</label>
+        <input type="text" name="borders" id="borders" value="<%= pais.borders?.join(', ') || '' %>" class="w-full border rounded px-3 py-2 campo-requerido" required />
+        <p id="borders-error" class="text-red-600 text-sm mt-1 hidden">❌ Cada código debe tener exactamente 3 letras mayúsculas (ej. ARG, BOL, PER).</p>
+      </div>
+     
+     
+      <div>
+      <label class="block font-semibold mb-1">*Área (km²):</label>
+      <input type="number" name="area" id="area" value="<%= pais.area !== undefined ? pais.area : '' %>" class="w-full border rounded px-3 py-2 campo-requerido" required />
+      <p class="mensaje-error text-red-600 text-sm mt-1 hidden">❌ Este campo no puede estar vacío, debe ser 0 o mayor.</p>
+    </div>
+
+
+
+
+
+
+    <div>
+      <label class="block font-semibold mb-1">*Población:</label>
+      <input type="number" name="population" id="population" value="<%= pais.population !== undefined ? pais.population : '' %>" class="w-full border rounded px-3 py-2 campo-requerido" required />
+      <p class="population-error text-red-600 text-sm mt-1 hidden">❌ Este valor debe ser positivo o 0.</p>
+      <p class="mensaje-error text-red-600 text-sm mt-1 hidden">❌ Este campo no puede estar vacío y debe ser 0 o mayor</p>
+      
+    </div>
+
+
+
+      <div>
+        <label class="block font-semibold mb-1">*Gini (JSON - ejemplo: {"2019": 42.5}):</label>
+        <textarea name="gini" id="gini" class="w-full border rounded px-3 py-2 campo-requerido"><%= JSON.stringify(pais.gini || {})  %></textarea>
+        <p id="gini-error" class="text-red-600 text-sm mt-1 hidden">❌ Debe ser un JSON válido, no vaciiiio con años entre 1900 y 2025 y valores entre 0 y 100 (ej. {"2019": 42.5}).</p>
+        <!-- <p class="mensaje-error text-red-600 text-sm mt-1 hidden">❌ Este campo no puede estar vacío .</p> -->
+      </div>     
+
+      <label class="block font-semibold mb-1">*Creador:</label>
+      <input type="text" name="creador" id="creador"value="<%= pais.creador || '' %>" class="w-full border rounded px-3 py-2 campo-requerido" required />
+      <p class="mensaje-error text-red-600 text-sm mt-1 hidden">❌ Este campo no puede estar vacío.</p> 
+    </div>
+
+      <div class="text-right mt-6">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded">
+          Guardar Cambios
+        </button>
+      </div>
+    </form>
+  </div>
+ 
+ <script src="/js/validarFormularioPais.js"></script>
