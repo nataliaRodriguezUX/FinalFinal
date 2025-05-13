@@ -4,18 +4,18 @@
     <form action="/api/pais/crear" method="POST" class="space-y-4 bg-white p-6 rounded shadow">
      
       <div> 
+       <!--  Se obtiene el nombre oficial del país en español desde un mapa (Map) llamado nativeName, dentro del objeto pais.name. 
+        Si no hay valor, se deja vacío ('') -->
       <label class="block font-semibold mb-1">*Nombre Oficial en Español (nativeName.spa.official):</label>
         <input type="text" name="nativeNameOfficial" id="nativeNameOfficial"
                value="<%= pais.name?.nativeName?.get('spa')?.official || '' %>"
                class="w-full border rounded px-3 py-2 campo-requerido" required />
         <p id="nativeNameOfficial-error" class="text-red-600 text-sm mt-1 hidden">❌ Este campo no puede estar vacío y debe tener al menos 3 letras.</p>
       </div>
-
-
-
-
      
       <div>
+        <!-- Si pais.capital es un array, lo convierte en una cadena separada por comas (lo mismo para borders). 
+        Si no, usa el valor tal cual (o vacío si no hay). -->
         <label class="block font-semibold mb-1">* Capital (coma separadas):</label>
         <input type="text" name="capital" id="capital" value="<%= Array.isArray(pais.capital) ? pais.capital.join(', ') : (pais.capital || '')%>" class="w-full border rounded px-3 py-2 campo-requerido" required />
         <p id="capital-error" class="text-red-600 text-sm mt-1 hidden">❌ Cada capital debe tener solo letras y entre 3 y 90 caracteres.</p>

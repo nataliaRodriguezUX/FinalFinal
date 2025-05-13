@@ -1,14 +1,14 @@
 import { validationResult } from "express-validator";
 
 //Este middleware detecta automáticamente si la petición es HTML o API (según el header Accept).
-//"back" en res.redirect('back') vuelve al formulario que envió la petición.
+//"back" en res.redirect('back') vuelve al formulario que envió la petición,e .
 export function manejarErroresDeValidacion(req, res, next) {
   const errores = validationResult(req);
 
   if (!errores.isEmpty()) {
     const mensajes = errores.array();
 
-    // Si acepta HTML (formulario web), redirige con flash
+    // Si acepta HTML (formulario web), redirige con flash...pero no funcoooo
     if (req.headers.accept?.includes('text/html')) {
      // req.flash('errores', mensajes);
       return res.redirect('/api/dashboard'); // redirige a la misma página del formulario

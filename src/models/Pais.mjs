@@ -65,10 +65,11 @@ const paisSchema = new mongoose.Schema(
     },
     population: { type: Number, required: true },
     gini: {
-      type: Map,
+      type: Map, //type: Map Indica que este campo es un mapa de clave-valor
       of: Number,
       validate: {
         validator: function (giniObj) {
+          //Convierte los valores del Map (los valores del Gini por año) en un array para poder evaluarlos fácilmente.
           const valores = Array.from(giniObj.values());
           return valores.length > 0 && valores.every(v => v >= 0 && v <= 100);
         },

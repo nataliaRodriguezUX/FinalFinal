@@ -4,14 +4,15 @@ import { obtenerTodosLosPaises,
    borrarPaisPorNombre,obtenerPaisPorId } from "../services/PaisService.mjs";
  // obtenerPaisesMayoresDe30, obtenerPaisPorAtributo,obtenerPaisPorId
 import { renderizarPais, renderizarListaPaises } from "../views/responseViews.mjs";
-import _ from 'lodash'; // Asegúrate de tener lodash instalado
+import _ from 'lodash'; // instalar
 
 
-
+// Obtener un país por su ID 
 export async function  obtenerPaisPorIdController(req, res) {
  try{ 
      const {id}=req.params;
      const pais =await obtenerPaisPorId(id);
+    // Si el país no fue encontrado, devuelve error 404
      if (!pais)
          return res.status(404).send ({mensaje:'Pais no encontrado'});
      const paisFormateado=renderizarPais(pais)
@@ -24,13 +25,7 @@ export async function  obtenerPaisPorIdController(req, res) {
 }
 
 
-
-
-
-
-
-
-
+// Obtener todos los países y mostrar el dashboard
 export async function  obtenerTodosLosPaisesController(req, res) {
  //necesito inicializar las variables, antes de llamar a la fncion
  //con los paises, para sacar los totales
@@ -47,16 +42,42 @@ export async function  obtenerTodosLosPaisesController(req, res) {
       totalPoblacion += pais.population || 0;
       totalArea += pais.area || 0;
 
-      if (pais.gini && typeof pais.gini === 'object') {
-        const valores = Object.values(pais.gini);
-        if (valores.length > 0 && typeof valores[0] === 'number') {
-          sumaGini += valores[0];
-          cantidadGini++;
-        }
-      }
-    });
+      // Verifica si el campo gini del país es una instancia de Map
+      //  (porque Mongoose lo guarda así).
+      if (pais.gini instanceof Map) {
+        // Convierte el Map en un objeto plano
+       //  para poder usar métodos como Object.keys.
+         const giniObj = Object.fromEntries(pais.gini.entries());
+       // Extrae las claves (años) del objeto que
+       // sean valores numéricos de 4 cifras (ej: "2019"). 
+         const anios = Object.keys(giniObj)
+        .filter(anio => /^\d{4}$/.test(anio)) // Solo años válidos.
+        .map(anio => parseInt(anio)) // Convierte a número entero.
+        .sort((a, b) => b - a); // Ordena de mayor a menor (año más reciente primero).
 
+      // Si hay al menos un año válido...  
+      if (anios.length > 0) {
+        // Toma el año más reciente.
+        const anioMasReciente = anios[0];
+        // Obtiene el valor del índice Gini correspondiente a ese año.
+        const valor = giniObj[anioMasReciente];
+           // Si el valor es un número válido
+        if (typeof valor === 'number') {
+          sumaGini += valor;
+          cantidadGini++;
+    }
+  }
+}
+
+   
+    });
+  // calcula el promedio dividiendo la suma total por la cantidad,
+  // y lo redondea a 2 decimales 
     const promedioGini = cantidadGini > 0 ? (sumaGini / cantidadGini).toFixed(2) : null;
+    //pruebita para miiiiiiiiiiiii..necesito los valores
+    console.log('Total Gini válido:', cantidadGini);
+    console.log('Suma Gini:', sumaGini);
+    console.log('Promedio calculado:', promedioGini);
 
     // Enviar a la vista
     res.render('dashboard', {
@@ -75,19 +96,23 @@ export async function  obtenerTodosLosPaisesController(req, res) {
   }
 }
 
-
-
-///****************VER ESTOOOOOOOOOOOOO */
-
-
-
-    
+   // Crear un nuevo país 
       export async function crearPaisController(req, res) {
         try {
           
           // Extraer y preparar campos
           const nombreNativoOficial = req.body.nativeNameOfficial?.trim();
+          //  Verificamos si el campo `spa` dentro de `nativeName` es un Map
+          // Esto ocurre si fue definido como tipo `Map` en el modelo de Mongoose
+          // y aún no se transformó a un objeto plano que sea compatible con EJS.
+        
+          //  Convierte el string de capitales (separadas por comas) en un array de strings.
+          //  `req.body.capital` viene como un texto tipo: "Buenos Aires, Córdoba".
+          //  `.split(',')` lo divide en ["Buenos Aires", " Córdoba"].
+          // `.map(c => c.trim())` elimina espacios extra: ["Buenos Aires", "Córdoba"].
+          //  `.filter(c => c !== '')` asegura que no haya elementos vacíos (por si alguien puso una coma de más).
           const capital = req.body.capital?.split(',').map(c => c.trim()).filter(c => c !== '');
+          
           const borders = req.body.borders?.split(',').map(b => b.trim()).filter(b => b !== '');
           const area = Number(req.body.area);
           const population = Number(req.body.population);
@@ -95,25 +120,50 @@ export async function  obtenerTodosLosPaisesController(req, res) {
           const creador = req.body.creador?.trim();
       
           let gini;
-          try {
-            gini = JSON.parse(req.body.gini);
+
+        if (req.body.gini) {
+          if (req.headers.accept?.includes('text/html')) {
+            // Si viene del navegador (formulario web), parsear el string JSON
+            try {
+              gini = JSON.parse(req.body.gini);
+            } catch (err) {
+              return res.status(400).render('addPais', {
+                pais: req.body,
+                errores: ["El índice Gini debe estar en formato JSON válido, por ejemplo: {\"2021\": 42.9}"]
+              });
+            }
+          } else {
+            // Si viene de Postman (ya como objeto JSON)
+            gini = req.body.gini;
+          }
+        }
+
+          //let gini;
+         /* try {
+           const gini = req.body.gini;
+           // gini = JSON.parse(req.body.gini);
           } catch (err) {
             return res.status(400).render('addPais', {
               pais: req.body,
               errores: ["El índice Gini debe estar en formato JSON válido, por ejemplo: {\"2021\": 42.9}"]
             });
-          }
+          }*/
       
           // Validaciones obligatorias
           const errores = [];
+          // Validación: el nombre oficial en español es obligatorio
           if (!nombreNativoOficial) errores.push("El nombre nativo oficial ESP es obligatorio.");
+          // Validación: debe haber al menos una capital
           if (!capital || capital.length === 0) errores.push("Debe haber al menos una capital.");
+           // Validación: debe haber al menos una frontera 
           if (!borders || borders.length === 0) errores.push("Debe haber al menos un país limítrofe.");
+          // Validación: el área y la poblacion debe ser un número >= 0
           if (isNaN(area) || area <= 0) errores.push("Área debe ser un número positivo.");
-          if (isNaN(population) || population <= 0) errores.push("Población debe ser un número positivo.");
+          if (isNaN(population) || population < 0) errores.push("Población debe ser un número positivo.");
+          // Validación: Gini es obligatorio y no debe estar vacío
           if (!gini || Object.keys(gini).length === 0) errores.push("El índice Gini es obligatorio.");
           if (!creador) errores.push("El campo creador es obligatorio.");
-      
+          // Si hay errores, volver al formulario con los mensajes
           if (errores.length > 0) {
             return res.status(400).render('addPais', {
               pais: req.body,
@@ -156,36 +206,19 @@ export async function  obtenerTodosLosPaisesController(req, res) {
 
 
 
-export async function borrarPaisNombreController(req, res) {
- const { nombrePais } = req.params; // Nombre del superhéroe que se quiere borrar
 
- try {
-     const paisBorrado = await borrarPaisPorNombre(nombrePais);
-
-     if (!paisBorrado) {
-         return res.status(404).send({ mensaje: 'País no encontrado' });
-     }
-
-     // Devolver el pais borrado
-     res.status(200).json(paisBorrado);
- } catch (error) {
-     res.status(500).send({ mensaje: 'Error al borrar el País', error: error.message });
- }
-
-
-}
 
 export async function borrarPaisIdController(req, res) {
  const { id } = req.params; //id a borrar
 
  try {
      const paisBorrado = await borrarPaisPorId(id);
-
+    // Si el país no fue encontrado, devuelve error 404
      if (!paisBorrado) {
          return res.status(404).send({ mensaje: 'País no encontrado' });
      }
 
-     // Devolver el país borrado
+     // redirecciona
      res.redirect ('/api/dashboard')
  } catch (error) {
      res.status(500).send({ mensaje: 'Error al borrar el país', error: error.message });
@@ -204,7 +237,8 @@ export async function actualizarPaisController(req, res) {
     const { id } = req.params;
     const pais = await obtenerPaisPorId(id);
     if (!pais) return res.status(404).send({ mensaje: 'País no encontrado.' });
-
+    //Extrae varios campos específicos del cuerpo de la petición (req.body), 
+    // solo los que se necesitan actualizar
     const {
     // nameOfficial,
       nativeNameOfficial,
@@ -222,20 +256,22 @@ export async function actualizarPaisController(req, res) {
     //  continents,
       creador
     } = req.body;
-
+    //se sacan los espacios en bco 
+    // si el valor es un string, sino, devuelve undefined.
     const limpiarTexto = str => typeof str === 'string' ? str.trim() : undefined;
     const toNumberOrUndefined = value => {
       const num = Number(value);
       return isNaN(num) ? undefined : num;
     };
-
+    //Objeto donde se irán guardando los campos que realmente serán actualizados.
     const datosActualizados = {};
 
     // Campos anidados (name)
    // const nombreOficialLimpio = limpiarTexto(nameOfficial);
     //if (nombreOficialLimpio !== undefined) datosActualizados['name.official'] = nombreOficialLimpio;
 
-
+    //Limpia el texto del nombre nativo oficial y, si no es undefined, 
+    // lo asigna en el campo anidado correspondiente del objeto datosActualizados.
     const nombreNativoLimpio = limpiarTexto(nativeNameOfficial);
    if (nombreNativoLimpio !== undefined) datosActualizados['name.nativeName.spa.official'] = nombreNativoLimpio;
 
@@ -250,6 +286,8 @@ export async function actualizarPaisController(req, res) {
     if ('unMember' in req.body) datosActualizados.unMember = unMember === 'true';*/
 
     // Arrays
+    //Si el campo capital/borders existen y son string, 
+    // lo convierte en array separándolo por comas y eliminando espacios.
     if ('capital' in req.body && typeof capital === 'string') {
       datosActualizados.capital = capital.split(',').map(c => c.trim());
     }
@@ -264,6 +302,7 @@ export async function actualizarPaisController(req, res) {
     }*/
 
     // Números
+    //Convierte el valor de area/population a número. Si no es un número válido, guarda undefined.
     if ('area' in req.body) {
       const num = Number(area);
       datosActualizados.area = isNaN(num) ? undefined : num;
@@ -277,13 +316,14 @@ export async function actualizarPaisController(req, res) {
     //if ('population' in req.body) datosActualizados.population = toNumberOrUndefined(population);
 
     // Objetos JSON
-    // Evita procesar currencies o gini si no son válidos o están vacíos
+    // Evita procesar  gini si no son válidos o están vacíos
     if ('gini' in req.body && typeof gini === 'string') {
       const giniSinEspacios = gini.trim();
     
       if (giniSinEspacios !== '' && giniSinEspacios !== '{}') {
         try {
           const parsedGini = JSON.parse(giniSinEspacios);
+          // Si el Gini nuevo es distinto al anterior, actualizarlo
           if (!_.isEqual(pais.gini, parsedGini)) {
             datosActualizados.gini = parsedGini;
           }
@@ -296,22 +336,57 @@ export async function actualizarPaisController(req, res) {
     }
 
     // Otros campos simples
+    //  Limpia el valor del campo "creador" (elimina espacios en blanco al principio y al final)
+    // Solo lo hace si "creador" es una cadena de texto válida. Si no lo es, devuelve undefined.
     const creadorLimpio = limpiarTexto(creador);
+    // Si el valor limpiado **no es undefined** (es decir, si era una cadena válida),
+    // entonces lo guarda dentro del objeto datosActualizados bajo la clave "creador".
+    // Esto se usará después para actualizar el país en la base de datos.
     if (creadorLimpio !== undefined) datosActualizados.creador = creadorLimpio;
 
     //  Comparar solo lo que cambió
+    //  Inicializa un objeto vacío para guardar solo los cambios reales
     const cambios = {};
+    //  Recorre cada clave y valor del objeto "datosActualizados"
+    // Este objeto contiene solo los campos que vienen del formulario
     for (const [clave, valorNuevo] of Object.entries(datosActualizados)) {
+     //  Obtiene el valor actual del país desde la base de datos
+    // Usa _.get para acceder a propiedades anidadas como "name.nativeName.spa.official" 
       const valorActual = _.get(pais, clave);
+      // Si el valor nuevo es distinto del actual, guardar el cambio
+      // Si son distintos, lo guarda en el objeto de cambios
+      // Usa _.isEqual para evitar falsos positivos con arrays u objetos
       if (!_.isEqual(valorActual, valorNuevo)) {
         _.set(cambios, clave, valorNuevo);
       }
     }
+     let mensaje;
+     let respuesta;
+     // Si hay algún cambio, actualizar en la base de datos
+      if (Object.keys(cambios).length > 0) {
+        // Llama al servicio para actualizar el país en la base de datos
+        await actualizarPais(id, cambios);
 
-    if (Object.keys(cambios).length > 0) {
+        console.log("✅ Cambios guardados:", cambios);
+        mensaje = 'País actualizado correctamente';
+        respuesta = { estado: 'ok', mensaje, cambios };
+      } else {
+        console.log("🔍 No hubo cambios que guardar.");
+        mensaje = 'No hubo cambios que guardar';
+        respuesta = { estado: 'ok', mensaje };
+      }
+
+      // Si la solicitud vino desde un navegador HTML (no desde Postman o API)
+      // Redirige al dashboard    
+      if (req.headers.accept?.includes('text/html')) {
+        return res.redirect('/api/dashboard');
+      } else {
+        return res.json(respuesta);
+      }
+  /*   if (Object.keys(cambios).length > 0) {
+      // Llama al servicio para actualizar el país en la base de datos
       await actualizarPais(id, cambios);
-      console.log("✅ Cambios guardados:", cambios);
-    
+      console.log("✅ Cambios guardados:", cambios);     
       if (req.headers.accept?.includes('text/html')) {
        //// req.flash('mensaje', 'País actualizado correctamente');
         return res.redirect('/api/dashboard');
@@ -320,7 +395,8 @@ export async function actualizarPaisController(req, res) {
       }
     
     } else {
-      console.log("🔍 No hubo cambios que guardar.");
+      //  Si no hubo ninguna modificación real en los datos
+      console.log("No hubo cambios que guardar.");
     
       if (req.headers.accept?.includes('text/html')) {
       //  req.flash('mensaje', 'No se realizaron cambios.');
@@ -328,7 +404,7 @@ export async function actualizarPaisController(req, res) {
       } else {
         return res.json({ estado: 'ok', mensaje: 'No hubo cambios que guardar' });
       }
-    }
+    } */
   
 
   } catch (error) {
@@ -343,66 +419,29 @@ export async function actualizarPaisController(req, res) {
 
 
 
-/*antesss
-export async function actualizarPaisController(req, res) {
-  try {
-    const { id } = req.params;
-    const pais = await obtenerPaisPorId(id);
-    if (!pais) return res.status(404).send({ mensaje: 'País no encontrado.' });
-
-    const {
-      nameOfficial ,
-      nameCommon ,
-      nombreNativoOficial ,
-      independent,
-      unMember,
-      capital,
-      borders,
-      area,
-      population,
-      currencies,
-      gini,
-      timezones,
-      continents,
-      creador 
-    } = req.body;
-
-    const toNumberOrUndefined = value => {
-      const num = Number(value);
-      return isNaN(num) ? undefined : num;
-    };
-
-    const datosActualizados = {};
-
-    // Campos anidados (name)
-    if (nameOfficial !== null) datosActualizados['name.official'] = nameOfficial || "";
-    if (nameCommon !== null) datosActualizados['name.common'] = nameCommon || "";
-    if (nombreNativoOficial !== null)
-      datosActualizados['name.nativeName.spa.official'] = nombreNativoOficial || "";
-
-    // Booleanos
-    if ('independent' in req.body) datosActualizados.independent = independent === 'true';
-    if ('unMember' in req.body) datosActualizados.unMember = unMember === 'true';
-
-    
-*/
-
+// Renderiza el formulario de edición para un país específico
 export const modificarPaisFormularioController = async (req, res) => {
   try {
     const { id } = req.params;
     const pais = await obtenerPaisPorId(id);
-
+     // Si el país no fue encontrado, devuelve error 404
     if (!pais) {
       return res.status(404).send({ mensaje: 'País no encontrado' });
     }
 
-    // ✅ Convertir Map a objeto plano para que EJS lo interprete bien
+   
 
    /* if (pais.name?.nativeName instanceof Map) {
       pais.name.nativeName = Object.fromEntries(pais.name.nativeName.entries());
     }*/
 
+    // Si los valores son tipo Map, se convierten para que EJS los pueda mostrar
+    // Convierte el campo Map de nativeName.spa en objeto plano para poder renderizarlo en EJS
+
     if (pais.name?.nativeName?.spa instanceof Map) {
+     // Convierte ese Map en un objeto plano con `Object.fromEntries`
+     // Esto es necesario para poder usarlo correctamente en las vistas EJS
+     // porque EJS no sabe cómo renderizar Maps directamente.
       pais.name.nativeName.spa = Object.fromEntries(pais.name.nativeName.spa.entries());
     }
 /*
@@ -431,6 +470,27 @@ export const modificarPaisFormularioController = async (req, res) => {
   }
 };
 
+
+
+// se queda por si sirve en otro proyecto...
+export async function borrarPaisNombreController(req, res) {
+ const { nombrePais } = req.params; // Nombre del superhéroe que se quiere borrar
+
+ try {
+     const paisBorrado = await borrarPaisPorNombre(nombrePais);
+
+     if (!paisBorrado) {
+         return res.status(404).send({ mensaje: 'País no encontrado' });
+     }
+
+     // Devolver el pais borrado
+     res.status(200).json(paisBorrado);
+ } catch (error) {
+     res.status(500).send({ mensaje: 'Error al borrar el País', error: error.message });
+ }
+
+
+}
 
 /*
 export async function actualizarPaisController(req, res) {
@@ -658,6 +718,49 @@ export async function actualizarPaisController(req, res) {
 }
 **
 
+/*antesss
+export async function actualizarPaisController(req, res) {
+  try {
+    const { id } = req.params;
+    const pais = await obtenerPaisPorId(id);
+    if (!pais) return res.status(404).send({ mensaje: 'País no encontrado.' });
+
+    const {
+      nameOfficial ,
+      nameCommon ,
+      nombreNativoOficial ,
+      independent,
+      unMember,
+      capital,
+      borders,
+      area,
+      population,
+      currencies,
+      gini,
+      timezones,
+      continents,
+      creador 
+    } = req.body;
+
+    const toNumberOrUndefined = value => {
+      const num = Number(value);
+      return isNaN(num) ? undefined : num;
+    };
+
+    const datosActualizados = {};
+
+    // Campos anidados (name)
+    if (nameOfficial !== null) datosActualizados['name.official'] = nameOfficial || "";
+    if (nameCommon !== null) datosActualizados['name.common'] = nameCommon || "";
+    if (nombreNativoOficial !== null)
+      datosActualizados['name.nativeName.spa.official'] = nombreNativoOficial || "";
+
+    // Booleanos
+    if ('independent' in req.body) datosActualizados.independent = independent === 'true';
+    if ('unMember' in req.body) datosActualizados.unMember = unMember === 'true';
+
+    
+*/
 
 
 

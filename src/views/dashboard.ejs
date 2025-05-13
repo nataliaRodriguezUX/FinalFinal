@@ -54,7 +54,8 @@
             <ul class="list-disc pl-6 space-y-1">
               <li>Población total: <strong><%= totalPoblacion?.toLocaleString?.() || '-' %></strong></li>
               <li>Área total: <strong><%= totalArea?.toLocaleString?.() || '-' %> km²</strong></li>
-              <li>Gini promedio: <strong><%= promedioGini || '-' %></strong></li>
+              <li>Gini promedio: <strong><%= promedioGini !== null ? promedioGini : '-' %></strong></li>
+              
             </ul>
           </td>
         </tr>
