@@ -67,7 +67,7 @@ export const validarPais = () => {
   .if(body('area').exists())  // Solo valida si 'area' está presente en la solicitud
   .custom(value => {
     // Verifica si el valor es undefined, null o está vacío
-    if (value === undefined || value === null || value.trim() === '') {
+    if (value === undefined || value === null ) {
       throw new Error('El campo "area" es obligatorio y no puede estar vacío.');
     }
 
@@ -88,10 +88,60 @@ export const validarPais = () => {
 
     return true;
   }),
-
   body('population')
+  .if(body('population').exists())  // Solo valida si 'area' está presente en la solicitud
+  .custom(value => {
+    // Verifica si el valor es undefined, null o está vacío
+    if (value === undefined || value === null ) {
+      throw new Error('El campo "population" es obligatorio y no puede estar vacío.');
+    }
+
+    // Verifica que el valor sea un número flotante válido
+    if (isNaN(value)) {
+      throw new Error('El campo "polpulation" debe ser un número válido.');
+    }
+
+    // Verifica que el valor sea un número flotante (que puede ser decimal)
+    if (!Number(value) || isNaN(parseFloat(value))) {
+      throw new Error('El campo "poplation" debe ser un número flotante.');
+    }
+
+    // Verifica que el valor sea mayor o igual a 0
+    if (Number(value) < 0) {
+      throw new Error('Population debe ser un número mayor o igual a 0.');
+    }
+
+    return true;
+  }),
+ /* body('area')
+  .if(body('area').exists())
+  .custom(value => {
+    // Verifica que el valor sea un número válido
+    if (isNaN(value)) {
+      throw new Error('El area debe ser un número válido.');
+    }
+
+    // Verifica que el valor sea un número entero
+    if (!Number.isInteger(Number(value))) {
+      throw new Error('El area debe ser un número entero.');
+    }
+
+    // Verifica que la población sea mayor o igual a 0
+    if (Number(value) < 0) {
+      throw new Error('El area debe ser un número entero mayor o igual a 0.');
+    }
+
+    return true;
+  }),
+*/
+  
+/*body('population')
   .if(body('population').exists())
   .custom(value => {
+     // Verifica si el valor es undefined, null o está vacío
+    if (value === undefined || value === null ) {
+      throw new Error('El campo "area" es obligatorio y no puede estar vacío.');
+    }
     // Verifica que el valor sea un número válido
     if (isNaN(value)) {
       throw new Error('La población debe ser un número válido.');
@@ -108,7 +158,7 @@ export const validarPais = () => {
     }
 
     return true;
-  }),
+  }),*/
 
  /* Verifica que gini sea una cadena de texto que contenga un JSON válido.
   Si no es un JSON válido, lanza un error con el mensaje 'El índice Gini debe ser una cadena JSON válida.'.
